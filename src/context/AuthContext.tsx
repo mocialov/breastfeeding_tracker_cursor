@@ -50,16 +50,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        setState(prev => ({
-          ...prev,
-          session,
-          user: session?.user ?? null,
-          loading: false,
-        }));
+        if (event === 'SIGNED_OUT' || !session) {
+          setState(prev => ({
+            ...prev,
+            session: null,
+            user: null,
+            loading: false,
+            error: null
+          }));
+        } else {
+          setState(prev => ({
+            ...prev,
+            session,
+            user: session?.user ?? null,
+            loading: false,
+          }));
 
-        // Create or update user profile on sign in
-        if (event === 'SIGNED_IN' && session?.user) {
-          await createOrUpdateUserProfile(session.user);
+          // Create or update user profile on sign in
+          if (event === 'SIGNED_IN' && session?.user) {
+            await createOrUpdateUserProfile(session.user);
+          }
         }
       }
     );
@@ -109,22 +119,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     setState(prev => ({ ...prev, loading: true }));
 
-    const { error } = await supabase.auth.signOut();
+    try {
+      const { error } = await supabase.auth.signOut();
 
-    if (error) {
-      console.error('Error signing out:', error);
-      setState(prev => ({ ...prev, loading: false, error }));
-      return;
+      if (error) {
+        console.error('Error signing out:', error);
+      }
+
+      setState(prev => ({
+        ...prev,
+        session: null,
+        user: null,
+        loading: false,
+        error: null
+      }));
+    } catch (error) {
+      console.error('Unexpected error during sign out:', error);
+      setState(prev => ({
+        ...prev,
+        session: null,
+        user: null,
+        loading: false,
+        error: null
+      }));
     }
-
-    // Explicitly clear the user and session state
-    setState(prev => ({
-      ...prev,
-      user: null,
-      session: null,
-      loading: false,
-      error: null
-    }));
   };
 
   const resetPassword = async (email: string) => {

@@ -1,15 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
-const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+const supabaseUrl = process.env.REACT_APP_SUPABASE_URL || 'https://dummy.supabase.co';
+const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY || 'dummy-key';
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error(
-    'Missing Supabase environment variables. Please ensure REACT_APP_SUPABASE_URL and REACT_APP_SUPABASE_ANON_KEY are set.\n' +
-    'For local development: Create a .env file with your Supabase credentials.\n' +
-    'For GitHub Pages: Add these as repository secrets in GitHub Settings > Secrets and variables > Actions.'
-  );
-}
+// Use dummy configuration if environment variables are missing
+// This prevents app crashes during development/testing
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 

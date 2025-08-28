@@ -222,6 +222,25 @@
   gap: var(--space-1);
 }
 
+.sign-out-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: var(--font-size-lg);
+  padding: var(--space-1);
+  border-radius: var(--radius-md);
+  transition: all var(--transition-normal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: var(--space-3);
+}
+
+.sign-out-btn:hover {
+  background: rgba(239, 68, 68, 0.1);
+  transform: scale(1.1);
+}
+
 .user-name {
   font-family: var(--font-family-primary);
   font-size: var(--font-size-base);

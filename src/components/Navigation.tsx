@@ -1,16 +1,21 @@
 import React from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { isDebugMode } from '../lib/debug';
 import './Navigation.css';
 
 const Navigation: React.FC = () => {
   const { user, signOut } = useAuth();
-  const navigate = useNavigate();
 
   const handleSignOut = async () => {
-    await signOut();
-    navigate('/');
+    // Clear all auth data and reload to ensure clean logout
+    localStorage.clear();
+    sessionStorage.clear();
+
+    // Attempt Supabase signOut but don't wait for it
+    signOut();
+
+    // Force page reload to clear all React state
+    window.location.reload();
   };
 
   return (
@@ -65,15 +70,6 @@ const Navigation: React.FC = () => {
               🚪
             </button>
           </div>
-          {isDebugMode() && (
-            <NavLink
-              to="/debug"
-              className={({ isActive }) => `debug-link ${isActive ? 'active' : ''}`}
-              title="Debug Tools"
-            >
-              🔧
-            </NavLink>
-          )}
         </div>
       </div>
     </nav>
