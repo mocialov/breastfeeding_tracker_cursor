@@ -1,0 +1,21 @@
+{
+  "files": {
+    "main.css": "/breastfeeding_tracker_cursor/static/css/main.20695abc.css",
+    "main.js": "/breastfeeding_tracker_cursor/static/js/main.c7e94043.js",
+    "static/js/239.11123885.chunk.js": "/breastfeeding_tracker_cursor/static/js/239.11123885.chunk.js",
+    "static/js/977.42e2809d.chunk.js": "/breastfeeding_tracker_cursor/static/js/977.42e2809d.chunk.js",
+    "static/js/455.f40765a4.chunk.js": "/breastfeeding_tracker_cursor/static/js/455.f40765a4.chunk.js",
+    "static/js/453.8f8ca160.chunk.js": "/breastfeeding_tracker_cursor/static/js/453.8f8ca160.chunk.js",
+    "index.html": "/breastfeeding_tracker_cursor/index.html",
+    "main.20695abc.css.map": "/breastfeeding_tracker_cursor/static/css/main.20695abc.css.map",
+    "main.c7e94043.js.map": "/breastfeeding_tracker_cursor/static/js/main.c7e94043.js.map",
+    "239.11123885.chunk.js.map": "/breastfeeding_tracker_cursor/static/js/239.11123885.chunk.js.map",
+    "977.42e2809d.chunk.js.map": "/breastfeeding_tracker_cursor/static/js/977.42e2809d.chunk.js.map",
+    "455.f40765a4.chunk.js.map": "/breastfeeding_tracker_cursor/static/js/455.f40765a4.chunk.js.map",
+    "453.8f8ca160.chunk.js.map": "/breastfeeding_tracker_cursor/static/js/453.8f8ca160.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.20695abc.css",
+    "static/js/main.c7e94043.js"
+  ]
+}
