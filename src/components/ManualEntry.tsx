@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
 import './ManualEntry.css';
+import { useFeeding } from '../context/FeedingContext';
+import { FeedingSession } from '../types';
+import { v4 as uuidv4 } from 'uuid';
 
 const ManualEntry: React.FC = () => {
+  const { addSession } = useFeeding();
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     startTime: new Date().toTimeString().slice(0, 5),
@@ -13,24 +17,73 @@ const ManualEntry: React.FC = () => {
 
   const [useEndTime, setUseEndTime] = useState(false);
   const [endTime, setEndTime] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const calculateDuration = (): number => {
+    if (useEndTime && endTime) {
+      const startDateTime = new Date(`${formData.date}T${formData.startTime}`);
+      const endDateTime = new Date(`${formData.date}T${endTime}`);
+
+      if (endDateTime < startDateTime) {
+        // End time is next day
+        endDateTime.setDate(endDateTime.getDate() + 1);
+      }
+
+      return Math.round((endDateTime.getTime() - startDateTime.getTime()) / 60000); // minutes
+    } else {
+      return parseInt(formData.duration) || 0;
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Design-only: Just show success message
-    alert('Session added successfully! 🎉');
-    // Reset form
-    setFormData({
-      date: new Date().toISOString().split('T')[0],
-      startTime: new Date().toTimeString().slice(0, 5),
-      duration: '',
-      feedingType: 'left',
-      bottleVolume: '',
-      notes: ''
-    });
+    setIsSubmitting(true);
+
+    try {
+      const startDateTime = new Date(`${formData.date}T${formData.startTime}`);
+      const duration = calculateDuration();
+
+      if (duration <= 0) {
+        alert('Please enter a valid duration');
+        return;
+      }
+
+      const session: FeedingSession = {
+        id: uuidv4(),
+        startTime: startDateTime,
+        endTime: new Date(startDateTime.getTime() + duration * 60000),
+        duration: duration,
+        breastType: formData.feedingType as any,
+        bottleVolume: formData.feedingType === 'bottle' ? parseInt(formData.bottleVolume) || undefined : undefined,
+        notes: formData.notes || undefined,
+        isActive: false
+      };
+
+      await addSession(session);
+
+      alert('Session added successfully! 🎉');
+
+      // Reset form
+      setFormData({
+        date: new Date().toISOString().split('T')[0],
+        startTime: new Date().toTimeString().slice(0, 5),
+        duration: '',
+        feedingType: 'left',
+        bottleVolume: '',
+        notes: ''
+      });
+      setEndTime('');
+      setUseEndTime(false);
+    } catch (error) {
+      console.error('Error adding session:', error);
+      alert('Error adding session. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const feedingOptions = [
@@ -229,9 +282,9 @@ const ManualEntry: React.FC = () => {
         </div>
 
         <div className="form-actions">
-          <button type="submit" className="btn-primary submit-btn">
-            <span className="btn-icon">💾</span>
-            <span>Save Feeding Session</span>
+          <button type="submit" className="btn-primary submit-btn" disabled={isSubmitting}>
+            <span className="btn-icon">{isSubmitting ? '⏳' : '💾'}</span>
+            <span>{isSubmitting ? 'Saving...' : 'Save Feeding Session'}</span>
           </button>
         </div>
       </form>

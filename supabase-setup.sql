@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS public.feeding_sessions (
     duration INTEGER CHECK (duration > 0 AND duration <= 480), -- Max 8 hours in minutes
     breast_type TEXT CHECK (breast_type IN ('left', 'right', 'both', 'bottle')) NOT NULL,
     bottle_volume INTEGER CHECK (bottle_volume > 0 AND bottle_volume <= 500), -- Max 500ml
-    notes TEXT CHECK (LENGTH(notes) >= 500 OR notes IS NULL), -- Min 500 chars if provided
+    notes TEXT CHECK (LENGTH(notes) >= 1 OR notes IS NULL), -- Min 1 char if provided
     is_active BOOLEAN DEFAULT false,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()

@@ -1,39 +1,60 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './LiveTracker.css';
+import { useFeeding } from '../context/FeedingContext';
 
 const LiveTracker: React.FC = () => {
-  const [activeSession, setActiveSession] = useState<string | null>(null);
-  const [isPaused, setIsPaused] = useState(false);
+  const { state, startLiveSession, updateLiveSession, endLiveSession } = useFeeding();
   const [elapsedTime, setElapsedTime] = useState('00:00');
   const [showNotesModal, setShowNotesModal] = useState(false);
   const [showBottleModal, setShowBottleModal] = useState(false);
   const [notes, setNotes] = useState('');
   const [bottleVolume, setBottleVolume] = useState(120);
 
+  // Timer effect for live session
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+
+    if (state.liveSession && !state.liveSession.isPaused) {
+      interval = setInterval(() => {
+        const now = new Date();
+        const elapsed = now.getTime() - state.liveSession!.startTime.getTime();
+        const totalSeconds = Math.floor(elapsed / 1000);
+
+        const minutes = Math.floor(totalSeconds / 60);
+        const seconds = totalSeconds % 60;
+
+        setElapsedTime(`${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
+      }, 1000);
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [state.liveSession, state.liveSession?.isPaused]);
+
   const handleStartSession = (type: string) => {
     if (type === 'bottle') {
       setShowBottleModal(true);
     } else {
-      setActiveSession(type);
-      setElapsedTime('00:00');
+      startLiveSession(type as any);
     }
   };
 
   const handleStartBottleSession = () => {
-    setActiveSession('bottle');
-    setElapsedTime('00:00');
+    startLiveSession('bottle', bottleVolume);
     setShowBottleModal(false);
   };
 
   const handlePauseResume = () => {
-    setIsPaused(!isPaused);
+    if (state.liveSession) {
+      updateLiveSession({ isPaused: !state.liveSession.isPaused });
+    }
   };
 
   const handleSwitchBreast = () => {
-    if (activeSession === 'left') {
-      setActiveSession('right');
-    } else if (activeSession === 'right') {
-      setActiveSession('left');
+    if (state.liveSession && (state.liveSession.currentBreast === 'left' || state.liveSession.currentBreast === 'right')) {
+      const newBreast = state.liveSession.currentBreast === 'left' ? 'right' : 'left';
+      updateLiveSession({ currentBreast: newBreast as any });
     }
   };
 
@@ -41,13 +62,18 @@ const LiveTracker: React.FC = () => {
     setShowNotesModal(true);
   };
 
-  const handleSaveSession = () => {
-    // Design-only: Just reset the session
-    setActiveSession(null);
-    setIsPaused(false);
-    setElapsedTime('00:00');
-    setNotes('');
-    setShowNotesModal(false);
+  const handleSaveSession = async () => {
+    if (state.liveSession) {
+      try {
+        await endLiveSession(new Date(), notes);
+        setNotes('');
+        setShowNotesModal(false);
+        setElapsedTime('00:00');
+      } catch (error) {
+        console.error('Error saving session:', error);
+        alert('Error saving session. Please try again.');
+      }
+    }
   };
 
   const getBreastIcon = (type: string) => {
@@ -70,7 +96,7 @@ const LiveTracker: React.FC = () => {
     }
   };
 
-  if (!activeSession) {
+  if (!state.liveSession) {
     return (
       <div className="live-tracker">
         <div className="tracker-header">
@@ -197,15 +223,15 @@ const LiveTracker: React.FC = () => {
       <div className="session-header">
         <div className="session-info">
           <div className="current-feeding">
-            <span className="feeding-icon">{getBreastIcon(activeSession)}</span>
+            <span className="feeding-icon">{getBreastIcon(state.liveSession?.currentBreast || '')}</span>
             <div className="feeding-details">
-              <h2>{getBreastLabel(activeSession)}</h2>
+              <h2>{getBreastLabel(state.liveSession?.currentBreast || '')}</h2>
               <p>Active feeding session</p>
             </div>
           </div>
           <div className="session-status">
-            <div className={`status-indicator ${isPaused ? 'paused' : 'active'}`}></div>
-            <span className="status-text">{isPaused ? 'Paused' : 'Active'}</span>
+            <div className={`status-indicator ${state.liveSession?.isPaused ? 'paused' : 'active'}`}></div>
+            <span className="status-text">{state.liveSession?.isPaused ? 'Paused' : 'Active'}</span>
           </div>
         </div>
       </div>
@@ -223,16 +249,16 @@ const LiveTracker: React.FC = () => {
       </div>
 
       <div className="session-controls">
-        <button 
-          className={`control-btn pause-resume ${isPaused ? 'resume' : 'pause'}`}
+        <button
+          className={`control-btn pause-resume ${state.liveSession?.isPaused ? 'resume' : 'pause'}`}
           onClick={handlePauseResume}
         >
-          <div className="btn-icon">{isPaused ? '▶️' : '⏸️'}</div>
-          <span>{isPaused ? 'Resume' : 'Pause'}</span>
+          <div className="btn-icon">{state.liveSession?.isPaused ? '▶️' : '⏸️'}</div>
+          <span>{state.liveSession?.isPaused ? 'Resume' : 'Pause'}</span>
         </button>
 
-        {(activeSession === 'left' || activeSession === 'right') && (
-          <button 
+        {(state.liveSession?.currentBreast === 'left' || state.liveSession?.currentBreast === 'right') && (
+          <button
             className="control-btn switch-breast"
             onClick={handleSwitchBreast}
           >

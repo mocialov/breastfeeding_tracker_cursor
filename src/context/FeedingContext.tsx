@@ -99,36 +99,70 @@ export function FeedingProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
 
   const loadSessions = useCallback(async () => {
-    if (!user) return;
+    console.log('🔍 loadSessions called for user:', user?.id);
+
+    if (!user) {
+      console.log('ℹ️ No user, skipping session load');
+      return;
+    }
 
     dispatch({ type: 'SET_LOADING', payload: true });
-    
+
     try {
+      console.log('📡 Fetching sessions from Supabase...');
+
       const { data, error } = await supabase
         .from('feeding_sessions')
         .select('*')
         .eq('user_id', user.id)
         .order('start_time', { ascending: false });
 
+      console.log('📥 Supabase query response:', { data, error, dataCount: data?.length });
+
       if (error) {
-        console.error('Error loading sessions:', error);
+        console.error('❌ Error loading sessions:', error);
+        console.error('📋 Error details:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
+
+        if (error.code === '42P01') {
+          console.error('🚨 Database table "feeding_sessions" does not exist!');
+          console.log('💡 Please run the database setup script from supabase-setup.sql');
+        }
+
         return;
       }
 
-      const sessions: FeedingSession[] = data.map(row => ({
-        id: row.id,
-        startTime: new Date(row.start_time),
-        endTime: row.end_time ? new Date(row.end_time) : undefined,
-        duration: row.duration,
-        breastType: row.breast_type,
-        bottleVolume: row.bottle_volume,
-        notes: row.notes,
-        isActive: row.is_active,
-      }));
+      if (!data) {
+        console.log('ℹ️ No data returned from Supabase');
+        dispatch({ type: 'SET_SESSIONS', payload: [] });
+        return;
+      }
 
+      console.log(`📊 Processing ${data.length} sessions from database`);
+
+      const sessions: FeedingSession[] = data.map(row => {
+        const session = {
+          id: row.id,
+          startTime: new Date(row.start_time),
+          endTime: row.end_time ? new Date(row.end_time) : undefined,
+          duration: row.duration,
+          breastType: row.breast_type,
+          bottleVolume: row.bottle_volume,
+          notes: row.notes,
+          isActive: row.is_active,
+        };
+        console.log('🔄 Processed session:', session.id, session.startTime, session.breastType);
+        return session;
+      });
+
+      console.log(`✅ Loaded ${sessions.length} sessions successfully`);
       dispatch({ type: 'SET_SESSIONS', payload: sessions });
     } catch (error) {
-      console.error('Error loading sessions:', error);
+      console.error('💥 Error in loadSessions:', error);
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false });
     }
@@ -145,23 +179,24 @@ export function FeedingProvider({ children }: { children: ReactNode }) {
   }, [user, loadSessions]);
 
   const addSession = async (session: FeedingSession) => {
-    console.log('addSession called with:', session);
-    console.log('Current user:', user);
-    
+    console.log('🔍 addSession called with:', session);
+    console.log('👤 Current user:', user);
+
     if (!user) {
-      console.log('No user found, cannot add session');
-      return;
+      console.error('❌ No user found, cannot add session');
+      throw new Error('You must be logged in to add feeding sessions');
     }
 
     try {
-      console.log('Inserting session into Supabase...');
+      console.log('📝 Preparing session data for Supabase...');
+
       // Validate duration - must be > 0 and <= 480 (8 hours in minutes)
       const validatedDuration = session.duration && session.duration > 0 && session.duration <= 480
         ? session.duration
         : null;
 
       if (!validatedDuration) {
-        console.error('Invalid duration:', session.duration);
+        console.error('❌ Invalid duration:', session.duration);
         throw new Error('Duration must be greater than 0 and less than or equal to 480 minutes (8 hours)');
       }
 
@@ -175,54 +210,72 @@ export function FeedingProvider({ children }: { children: ReactNode }) {
         bottle_volume: session.bottleVolume || null,
         notes: session.notes || null,
         is_active: session.isActive || false,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
       };
-      console.log('Insert data:', insertData);
-      console.log('Data types:', {
-        id: typeof insertData.id,
-        user_id: typeof insertData.user_id,
-        start_time: typeof insertData.start_time,
-        end_time: typeof insertData.end_time,
-        duration: typeof insertData.duration,
-        breast_type: typeof insertData.breast_type,
-        bottle_volume: typeof insertData.bottle_volume,
-        notes: typeof insertData.notes,
-        is_active: typeof insertData.is_active
-      });
-      console.log('Notes validation:', {
-        notesLength: insertData.notes?.length || 0,
-        notesRequired: insertData.notes ? 'Yes' : 'No',
-        meetsMinimum: insertData.notes ? insertData.notes.length >= 500 : 'N/A'
-      });
-      
-      console.log('Attempting Supabase insert...');
-      console.log('Supabase client:', !!supabase);
-      console.log('Table name: feeding_sessions');
-      
+
+      console.log('📊 Insert data prepared:', insertData);
+      console.log('🔗 Testing Supabase connection...');
+
+      // First test the connection with a simple query and timeout
+      console.log('⏱️ Testing Supabase connection with timeout...');
+
+      const connectionTest = supabase.from('feeding_sessions').select('count').limit(1);
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Database connection timeout after 15 seconds')), 15000)
+      );
+
+      try {
+        const { data: testData, error: testError } = await Promise.race([connectionTest, timeoutPromise]) as any;
+
+        if (testError) {
+          console.error('❌ Supabase connection test failed:', testError);
+          throw new Error(`Database connection failed: ${testError.message}`);
+        }
+
+        console.log('✅ Supabase connection successful, inserting session...');
+      } catch (timeoutError) {
+        console.error('❌ Connection test timed out:', timeoutError);
+        throw new Error('Database connection is timing out. Please check your Supabase dashboard and ensure the database is properly set up.');
+      }
+
       const { data, error } = await supabase
         .from('feeding_sessions')
         .insert(insertData)
         .select();
-      
-      console.log('Supabase response:', { data, error });
+
+      console.log('📥 Supabase insert response:', { data, error });
 
       if (error) {
-        console.error('Error adding session:', error);
-        console.error('Error details:', {
+        console.error('❌ Error inserting session:', error);
+        console.error('📋 Error details:', {
           message: error.message,
           details: error.details,
           hint: error.hint,
           code: error.code
         });
-        throw error;
+
+        // Check for specific error types
+        if (error.code === '42P01') {
+          throw new Error('Database table "feeding_sessions" does not exist. Please run the database setup script.');
+        } else if (error.code === '42501') {
+          throw new Error('Permission denied. Please check Row Level Security policies.');
+        } else if (error.code === '23505') {
+          throw new Error('A session with this ID already exists.');
+        } else if (error.message.includes('JWT')) {
+          throw new Error('Authentication error. Please log out and log back in.');
+        }
+
+        throw new Error(`Failed to save session: ${error.message}`);
       }
 
-      console.log('Session inserted successfully, dispatching ADD_SESSION');
+      if (!data || data.length === 0) {
+        console.error('❌ No data returned from insert');
+        throw new Error('Session was not saved to database');
+      }
+
+      console.log('✅ Session inserted successfully:', data);
       dispatch({ type: 'ADD_SESSION', payload: session });
-      console.log('ADD_SESSION dispatched');
     } catch (error) {
-      console.error('Error adding session:', error);
+      console.error('💥 Error in addSession:', error);
       throw error;
     }
   };
