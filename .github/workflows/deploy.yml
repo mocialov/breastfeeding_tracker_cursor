@@ -28,11 +28,53 @@ jobs:
     - name: Install dependencies
       run: npm ci
 
+    - name: Debug Environment Variables
+      run: |
+        echo "=== DEBUGGING ENVIRONMENT VARIABLES ==="
+        echo "Available secrets (masked):"
+        echo "REACT_APP_SUPABASE_URL exists: ${{ secrets.REACT_APP_SUPABASE_URL != '' }}"
+        echo "REACT_APP_SUPABASE_ANON_KEY exists: ${{ secrets.REACT_APP_SUPABASE_ANON_KEY != '' }}"
+
+        echo "Environment variables during build:"
+        echo "REACT_APP_SUPABASE_URL: $REACT_APP_SUPABASE_URL"
+        echo "REACT_APP_SUPABASE_ANON_KEY: $REACT_APP_SUPABASE_ANON_KEY"
+        echo "REACT_APP_SUPABASE_URL length: ${#REACT_APP_SUPABASE_URL}"
+        echo "REACT_APP_SUPABASE_ANON_KEY length: ${#REACT_APP_SUPABASE_ANON_KEY}"
+
+        # Check if variables are actually set
+        if [ -z "$REACT_APP_SUPABASE_URL" ]; then
+          echo "❌ REACT_APP_SUPABASE_URL is empty!"
+        else
+          echo "✅ REACT_APP_SUPABASE_URL is set"
+        fi
+
+        if [ -z "$REACT_APP_SUPABASE_ANON_KEY" ]; then
+          echo "❌ REACT_APP_SUPABASE_ANON_KEY is empty!"
+        else
+          echo "✅ REACT_APP_SUPABASE_ANON_KEY is set"
+        fi
+
     - name: Build
-      run: npm run build
+      run: |
+        echo "Starting build process..."
+        npm run build
       env:
         REACT_APP_SUPABASE_URL: ${{ secrets.REACT_APP_SUPABASE_URL }}
         REACT_APP_SUPABASE_ANON_KEY: ${{ secrets.REACT_APP_SUPABASE_ANON_KEY }}
+
+    - name: Verify Environment Variables in Build
+      run: |
+        echo "Checking if environment variables are embedded in built files..."
+        if grep -r "REACT_APP_SUPABASE_URL" build/ 2>/dev/null; then
+          echo "✅ REACT_APP_SUPABASE_URL found in build files"
+        else
+          echo "❌ REACT_APP_SUPABASE_URL not found in build files"
+        fi
+        if grep -r "REACT_APP_SUPABASE_ANON_KEY" build/ 2>/dev/null; then
+          echo "✅ REACT_APP_SUPABASE_ANON_KEY found in build files"
+        else
+          echo "❌ REACT_APP_SUPABASE_ANON_KEY not found in build files"
+        fi
 
     - name: Deploy to GitHub Pages
       if: github.ref == 'refs/heads/main'
