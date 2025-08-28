@@ -108,10 +108,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     setState(prev => ({ ...prev, loading: true }));
-    
-    await supabase.auth.signOut();
-    
-    setState(prev => ({ ...prev, loading: false }));
+
+    const { error } = await supabase.auth.signOut();
+
+    if (error) {
+      console.error('Error signing out:', error);
+      setState(prev => ({ ...prev, loading: false, error }));
+      return;
+    }
+
+    // Explicitly clear the user and session state
+    setState(prev => ({
+      ...prev,
+      user: null,
+      session: null,
+      loading: false,
+      error: null
+    }));
   };
 
   const resetPassword = async (email: string) => {
