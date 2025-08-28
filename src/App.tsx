@@ -1,10 +1,5 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-
-// Get the basename for GitHub Pages deployment
-const basename = process.env.NODE_ENV === 'production'
-  ? '/breastfeeding_tracker_cursor'
-  : '';
 import './App.css';
 import LiveTracker from './components/LiveTracker';
 import ManualEntry from './components/ManualEntry';
@@ -13,6 +8,11 @@ import Navigation from './components/Navigation';
 import Auth from './components/Auth';
 import { FeedingProvider } from './context/FeedingContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
+
+// Get the basename for GitHub Pages deployment
+const basename = process.env.NODE_ENV === 'production'
+  ? '/breastfeeding_tracker_cursor'
+  : '';
 
 // Protected Route Component
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
