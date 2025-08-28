@@ -1,168 +1,98 @@
 import React, { useState } from 'react';
-import { useFeeding } from '../context/FeedingContext';
-import { FeedingSession } from '../types';
-import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay } from 'date-fns';
-
-import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
 import './FeedingHistory.css';
 
 const FeedingHistory: React.FC = () => {
-  const { state, updateSession, deleteSession, getDailySummary } = useFeeding();
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [editingSession, setEditingSession] = useState<FeedingSession | null>(null);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
-  const [showNotes, setShowNotes] = useState<Set<string>>(new Set());
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [viewMode, setViewMode] = useState<'list' | 'summary'>('list');
+  const [editingSession, setEditingSession] = useState<string | null>(null);
 
-  const { sessions } = state;
-
-  // Get sessions for selected date
-  const sessionsForDate = sessions.filter(session => 
-    isSameDay(new Date(session.startTime), selectedDate)
-  );
-
-  // Get weekly summary
-  const weekStart = startOfWeek(selectedDate, { weekStartsOn: 1 });
-  const weekEnd = endOfWeek(selectedDate, { weekStartsOn: 1 });
-  const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
-
-  const weeklySummary = weekDays.map(date => ({
-    date,
-    summary: getDailySummary(date)
-  }));
-
-  const handleEditSession = (session: FeedingSession) => {
-    setEditingSession({ ...session });
-  };
-
-  const handleUpdateSession = (updatedSession: FeedingSession) => {
-    updateSession(updatedSession);
-    setEditingSession(null);
-  };
-
-  const handleDeleteSession = (id: string) => {
-    deleteSession(id);
-    setShowDeleteConfirm(null);
-  };
-
-  const toggleNotes = (sessionId: string) => {
-    const newShowNotes = new Set(showNotes);
-    if (newShowNotes.has(sessionId)) {
-      newShowNotes.delete(sessionId);
-    } else {
-      newShowNotes.add(sessionId);
+  // Mock data for design purposes
+  const mockSessions = [
+    {
+      id: '1',
+      time: '08:30',
+      duration: 15,
+      type: 'left',
+      icon: '🤱',
+      notes: 'Baby was very hungry this morning. Fed well and seemed satisfied.'
+    },
+    {
+      id: '2',
+      time: '11:45',
+      duration: 12,
+      type: 'right',
+      icon: '🤱',
+      notes: 'Shorter feeding session. Baby fell asleep quickly.'
+    },
+    {
+      id: '3',
+      time: '14:20',
+      duration: 18,
+      type: 'both',
+      icon: '👶',
+      notes: 'Switched sides during feeding. Baby was alert and content afterwards.'
+    },
+    {
+      id: '4',
+      time: '17:00',
+      duration: 10,
+      type: 'bottle',
+      icon: '🍼',
+      volume: 120,
+      notes: 'Bottle feeding while out. Baby drank most of it.'
     }
-    setShowNotes(newShowNotes);
+  ];
+
+  const mockWeeklySummary = [
+    { date: 'Mon', day: '18', sessions: 6, totalTime: 85 },
+    { date: 'Tue', day: '19', sessions: 5, totalTime: 72 },
+    { date: 'Wed', day: '20', sessions: 7, totalTime: 98 },
+    { date: 'Thu', day: '21', sessions: 6, totalTime: 81 },
+    { date: 'Fri', day: '22', sessions: 5, totalTime: 69 },
+    { date: 'Sat', day: '23', sessions: 4, totalTime: 58 },
+    { date: 'Sun', day: '24', sessions: 6, totalTime: 89 }
+  ];
+
+  const handleEditSession = (sessionId: string) => {
+    setEditingSession(sessionId);
   };
 
-  const exportToCSV = () => {
-    const csvContent = [
-      ['Date', 'Start Time', 'End Time', 'Duration (min)', 'Type', 'Bottle Volume (ml)', 'Notes'],
-      ...sessions.map(session => [
-        format(session.startTime, 'yyyy-MM-dd'),
-        format(session.startTime, 'HH:mm'),
-        session.endTime ? format(session.endTime, 'HH:mm') : '',
-        session.duration?.toString() || '',
-        session.breastType,
-        session.bottleVolume?.toString() || '',
-        session.notes || ''
-      ])
-    ].map(row => row.map(field => `"${field}"`).join(',')).join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `breastfeeding-sessions-${format(new Date(), 'yyyy-MM-dd')}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
-  };
-
-  const exportToPDF = () => {
-    const doc = new jsPDF();
-    
-    // Title
-    doc.setFontSize(20);
-    doc.text('Breastfeeding Sessions Report', 20, 20);
-    doc.setFontSize(12);
-    doc.text(`Generated on ${format(new Date(), 'PPP')}`, 20, 30);
-
-    // Summary table
-    const summaryData = weeklySummary.map(({ date, summary }) => [
-      format(date, 'MMM dd'),
-      summary.totalSessions.toString(),
-      `${summary.totalTime} min`,
-      `${summary.leftBreastTime} min`,
-      `${summary.rightBreastTime} min`,
-      `${summary.bottleTime} min`,
-      `${summary.bottleVolume} ml`
-    ]);
-
-    (doc as any).autoTable({
-      startY: 40,
-      head: [['Date', 'Sessions', 'Total Time', 'Left Breast', 'Right Breast', 'Bottle Time', 'Bottle Volume']],
-      body: summaryData,
-      theme: 'grid'
-    });
-
-    // Sessions table
-    const sessionsData = sessionsForDate.map(session => [
-      format(session.startTime, 'HH:mm'),
-      session.duration?.toString() || '',
-      session.breastType,
-      session.bottleVolume?.toString() || '',
-      session.notes?.substring(0, 50) + (session.notes && session.notes.length > 50 ? '...' : '') || ''
-    ]);
-
-    if (sessionsData.length > 0) {
-      (doc as any).autoTable({
-        startY: (doc as any).lastAutoTable.finalY + 20,
-        head: [['Time', 'Duration', 'Type', 'Bottle Volume', 'Notes']],
-        body: sessionsData,
-        theme: 'grid'
-      });
-    }
-
-    doc.save(`breastfeeding-report-${format(selectedDate, 'yyyy-MM-dd')}.pdf`);
-  };
-
-  const getBreastIcon = (breastType: string) => {
-    switch (breastType) {
-      case 'left': return '👈';
-      case 'right': return '👉';
-      case 'both': return '👈👉';
-      case 'bottle': return '🍼';
-      default: return '👶';
+  const handleDeleteSession = (sessionId: string) => {
+    // Design-only: Just show confirmation
+    if (window.confirm('Are you sure you want to delete this feeding session?')) {
+      alert('Session deleted successfully! 🗑️');
     }
   };
 
-  if (editingSession) {
-    return (
-      <div className="feeding-history">
-        <div className="history-header">
-          <h1>✏️ Edit Session</h1>
-          <button 
-            className="btn-secondary"
-            onClick={() => setEditingSession(null)}
-          >
-            Cancel
-          </button>
-        </div>
-        
-        <EditSessionForm 
-          session={editingSession}
-          onSave={handleUpdateSession}
-          onCancel={() => setEditingSession(null)}
-        />
-      </div>
-    );
-  }
+  const handleExportCSV = () => {
+    alert('CSV export started! 📊');
+  };
+
+  const handleExportPDF = () => {
+    alert('PDF export started! 📄');
+  };
+
+  const getTypeLabel = (type: string) => {
+    switch (type) {
+      case 'left': return 'Left Breast';
+      case 'right': return 'Right Breast';
+      case 'both': return 'Both Breasts';
+      case 'bottle': return 'Bottle';
+      default: return type;
+    }
+  };
 
   return (
     <div className="feeding-history">
       <div className="history-header">
-        <h1>📊 Feeding History</h1>
+        <div className="header-content">
+          <div className="header-decoration"></div>
+          <h1>
+            <span className="header-icon">📊</span>
+            Feeding History
+          </h1>
+          <p>Track your baby's feeding patterns and progress</p>
+        </div>
         
         <div className="header-actions">
           <div className="view-toggle">
@@ -170,329 +100,222 @@ const FeedingHistory: React.FC = () => {
               className={`toggle-btn ${viewMode === 'list' ? 'active' : ''}`}
               onClick={() => setViewMode('list')}
             >
-              📊 List
+              <span className="btn-icon">📋</span>
+              <span>Sessions</span>
             </button>
             <button
               className={`toggle-btn ${viewMode === 'summary' ? 'active' : ''}`}
               onClick={() => setViewMode('summary')}
             >
-              📈 Summary
+              <span className="btn-icon">📈</span>
+              <span>Summary</span>
             </button>
           </div>
           
-          <div className="export-buttons">
-            <button className="btn-secondary" onClick={exportToCSV}>
-              📥 CSV
+          <div className="export-actions">
+            <button className="btn-secondary export-btn" onClick={handleExportCSV}>
+              <span className="btn-icon">📊</span>
+              <span>CSV</span>
             </button>
-            <button className="btn-secondary" onClick={exportToPDF}>
-              📥 PDF
+            <button className="btn-secondary export-btn" onClick={handleExportPDF}>
+              <span className="btn-icon">📄</span>
+              <span>PDF</span>
             </button>
           </div>
         </div>
       </div>
 
-      <div className="date-selector">
-        <button 
-          className="date-nav-btn"
-          onClick={() => setSelectedDate(prev => {
-            const newDate = new Date(prev);
-            newDate.setDate(prev.getDate() - 1);
-            return newDate;
-          })}
-        >
-          ← Previous
+      <div className="date-navigation">
+        <button className="date-nav-btn prev">
+          <span>←</span>
+          <span>Previous</span>
         </button>
         
         <div className="current-date">
-          📅
-          <input
-            type="date"
-            value={format(selectedDate, 'yyyy-MM-dd')}
-            onChange={(e) => setSelectedDate(new Date(e.target.value))}
-            max={format(new Date(), 'yyyy-MM-dd')}
-          />
+          <div className="date-display">
+            <span className="date-icon">📅</span>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="date-input"
+              max={new Date().toISOString().split('T')[0]}
+            />
+          </div>
         </div>
         
-        <button 
-          className="date-nav-btn"
-          onClick={() => setSelectedDate(prev => {
-            const newDate = new Date(prev);
-            newDate.setDate(prev.getDate() + 1);
-            if (newDate <= new Date()) {
-              return newDate;
-            }
-            return prev;
-          })}
-          disabled={isSameDay(selectedDate, new Date())}
-        >
-          Next →
+        <button className="date-nav-btn next">
+          <span>Next</span>
+          <span>→</span>
         </button>
       </div>
 
       {viewMode === 'summary' ? (
         <div className="weekly-summary">
-          <h2>Weekly Summary</h2>
+          <div className="summary-header">
+            <h2>Weekly Overview</h2>
+            <p>Your baby's feeding patterns this week</p>
+          </div>
+          
           <div className="summary-grid">
-            {weeklySummary.map(({ date, summary }) => (
+            {mockWeeklySummary.map((day, index) => (
               <div 
-                key={date.toISOString()} 
-                className={`summary-card ${isSameDay(date, selectedDate) ? 'selected' : ''}`}
-                onClick={() => setSelectedDate(date)}
+                key={index} 
+                className={`summary-card ${index === 3 ? 'today' : ''}`}
+                onClick={() => setSelectedDate(`2024-03-${day.day}`)}
               >
-                <div className="summary-date">{format(date, 'EEE')}</div>
-                <div className="summary-date-full">{format(date, 'MMM dd')}</div>
+                <div className="summary-date">
+                  <div className="day-name">{day.date}</div>
+                  <div className="day-number">{day.day}</div>
+                </div>
                 <div className="summary-stats">
                   <div className="stat">
-                    <span className="stat-label">Sessions:</span>
-                    <span className="stat-value">{summary.totalSessions}</span>
+                    <span className="stat-icon">🍼</span>
+                    <span className="stat-value">{day.sessions}</span>
+                    <span className="stat-label">sessions</span>
                   </div>
                   <div className="stat">
-                    <span className="stat-label">Total:</span>
-                    <span className="stat-value">{summary.totalTime} min</span>
+                    <span className="stat-icon">⏱️</span>
+                    <span className="stat-value">{day.totalTime}</span>
+                    <span className="stat-label">minutes</span>
                   </div>
-                  <div className="stat">
-                    <span className="stat-label">Left:</span>
-                    <span className="stat-value">{summary.leftBreastTime} min</span>
+                </div>
+                {index === 3 && <div className="today-indicator">Today</div>}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="sessions-list">
+          <div className="list-header">
+            <h2>Today's Sessions</h2>
+            <div className="daily-stats">
+              <div className="daily-stat">
+                <span className="stat-icon">🍼</span>
+                <span className="stat-value">4</span>
+                <span className="stat-label">sessions</span>
+              </div>
+              <div className="daily-stat">
+                <span className="stat-icon">⏱️</span>
+                <span className="stat-value">55</span>
+                <span className="stat-label">minutes</span>
+              </div>
+            </div>
+          </div>
+          
+          <div className="sessions-grid">
+            {mockSessions.map(session => (
+              <div key={session.id} className="session-card">
+                <div className="session-header">
+                  <div className="session-time">
+                    <div className="time-display">{session.time}</div>
+                    <div className="duration-display">{session.duration} min</div>
                   </div>
-                  <div className="stat">
-                    <span className="stat-label">Right:</span>
-                    <span className="stat-value">{summary.rightBreastTime} min</span>
-                  </div>
-                  {summary.bottleTime > 0 && (
-                    <div className="stat">
-                      <span className="stat-label">Bottle:</span>
-                      <span className="stat-value">{summary.bottleTime} min</span>
+                  
+                  <div className="session-type">
+                    <div className="type-icon">{session.icon}</div>
+                    <div className="type-info">
+                      <div className="type-label">{getTypeLabel(session.type)}</div>
+                      {session.volume && (
+                        <div className="volume-info">{session.volume}ml</div>
+                      )}
                     </div>
-                  )}
+                  </div>
+                </div>
+
+                <div className="session-notes">
+                  <div className="notes-content">{session.notes}</div>
+                </div>
+
+                <div className="session-actions">
+                  <button 
+                    className="action-btn edit"
+                    onClick={() => handleEditSession(session.id)}
+                  >
+                    <span className="btn-icon">✏️</span>
+                    <span>Edit</span>
+                  </button>
+                  <button 
+                    className="action-btn delete"
+                    onClick={() => handleDeleteSession(session.id)}
+                  >
+                    <span className="btn-icon">🗑️</span>
+                    <span>Delete</span>
+                  </button>
                 </div>
               </div>
             ))}
           </div>
         </div>
-      ) : null}
+      )}
 
-      <div className="sessions-list">
-        <h2>Sessions for {format(selectedDate, 'PPP')}</h2>
-        
-        {sessionsForDate.length === 0 ? (
-          <div className="no-sessions">
-            <p>No feeding sessions recorded for this date.</p>
-          </div>
-        ) : (
-          <div className="sessions-grid">
-            {sessionsForDate.map(session => (
-              <div key={session.id} className="session-card">
-                <div className="session-header">
-                  <div className="session-time">
-                    <span className="time">{format(session.startTime, 'HH:mm')}</span>
-                    {session.endTime && (
-                      <span className="duration">({session.duration} min)</span>
-                    )}
-                  </div>
-                  <div className="session-type">
-                    <span className="breast-icon">{getBreastIcon(session.breastType)}</span>
-                    <span className="type-label">{session.breastType}</span>
-                    {session.bottleVolume && (
-                      <span className="bottle-volume">{session.bottleVolume}ml</span>
-                    )}
-                  </div>
+      {/* Edit Modal (Design Only) */}
+      {editingSession && (
+        <div className="modal-overlay">
+          <div className="modal-content edit-modal">
+            <div className="modal-header">
+              <h3>✏️ Edit Session</h3>
+              <button 
+                className="close-btn"
+                onClick={() => setEditingSession(null)}
+              >
+                ×
+              </button>
+            </div>
+            
+            <div className="edit-form">
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Start Time</label>
+                  <input type="time" defaultValue="08:30" className="form-input" />
                 </div>
-
-                {session.notes && (
-                  <div className="session-notes">
-                    <button 
-                      className="notes-toggle"
-                      onClick={() => toggleNotes(session.id)}
-                    >
-                      {showNotes.has(session.id) ? '🙈' : '👁️'}
-                      Notes
-                    </button>
-                    {showNotes.has(session.id) && (
-                      <div className="notes-content">{session.notes}</div>
-                    )}
-                  </div>
-                )}
-
-                <div className="session-actions">
-                  <button 
-                    className="action-btn edit"
-                    onClick={() => handleEditSession(session)}
-                  >
-                    ✏️ Edit
-                  </button>
-                  <button 
-                    className="action-btn delete"
-                    onClick={() => setShowDeleteConfirm(session.id)}
-                  >
-                    🗑️ Delete
-                  </button>
+                <div className="form-group">
+                  <label>Duration (min)</label>
+                  <input type="number" defaultValue="15" className="form-input" />
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {showDeleteConfirm && (
-        <div className="delete-modal">
-          <div className="delete-content">
-            <h3>Confirm Delete</h3>
-            <p>Are you sure you want to delete this feeding session? This action cannot be undone.</p>
-            <div className="delete-actions">
+              
+              <div className="form-group">
+                <label>Feeding Type</label>
+                <select className="form-input">
+                  <option value="left">Left Breast</option>
+                  <option value="right">Right Breast</option>
+                  <option value="both">Both Breasts</option>
+                  <option value="bottle">Bottle</option>
+                </select>
+              </div>
+              
+              <div className="form-group">
+                <label>Notes</label>
+                <textarea 
+                  className="form-textarea" 
+                  rows={3}
+                  defaultValue="Baby was very hungry this morning. Fed well and seemed satisfied."
+                />
+              </div>
+            </div>
+            
+            <div className="modal-actions">
               <button 
                 className="btn-secondary"
-                onClick={() => setShowDeleteConfirm(null)}
+                onClick={() => setEditingSession(null)}
               >
                 Cancel
               </button>
               <button 
-                className="btn-danger"
-                onClick={() => handleDeleteSession(showDeleteConfirm)}
+                className="btn-primary"
+                onClick={() => {
+                  setEditingSession(null);
+                  alert('Session updated successfully! ✅');
+                }}
               >
-                Delete
+                Save Changes
               </button>
             </div>
           </div>
         </div>
       )}
     </div>
-  );
-};
-
-// Edit Session Form Component
-interface EditSessionFormProps {
-  session: FeedingSession;
-  onSave: (session: FeedingSession) => void;
-  onCancel: () => void;
-}
-
-const EditSessionForm: React.FC<EditSessionFormProps> = ({ session, onSave, onCancel }) => {
-  const [formData, setFormData] = useState({
-    startDate: format(session.startTime, 'yyyy-MM-dd'),
-    startTime: format(session.startTime, 'HH:mm'),
-    duration: session.duration?.toString() || '',
-    breastType: session.breastType,
-    bottleVolume: session.bottleVolume?.toString() || '',
-    notes: session.notes || ''
-  });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    const duration = parseInt(formData.duration);
-    if (!duration || duration <= 0 || duration > 480) {
-      alert('Duration must be between 1 minute and 8 hours (480 minutes)');
-      return;
-    }
-
-    const startDateTime = new Date(`${formData.startDate}T${formData.startTime}`);
-    const endDateTime = new Date(startDateTime.getTime() + duration * 60000);
-
-    const updatedSession: FeedingSession = {
-      ...session,
-      startTime: startDateTime,
-      endTime: endDateTime,
-      duration: duration,
-      breastType: formData.breastType,
-      bottleVolume: formData.breastType === 'bottle' ? parseInt(formData.bottleVolume) : undefined,
-      notes: formData.notes.trim() || undefined
-    };
-
-    onSave(updatedSession);
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="edit-form">
-      <div className="form-section">
-        <h2>Edit Session</h2>
-        
-        <div className="form-row">
-          <div className="form-group">
-            <label htmlFor="edit-start-date">Start Date</label>
-            <input
-              id="edit-start-date"
-              type="date"
-              value={formData.startDate}
-              onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
-              required
-            />
-          </div>
-          
-          <div className="form-group">
-            <label htmlFor="edit-start-time">Start Time</label>
-            <input
-              id="edit-start-time"
-              type="time"
-              value={formData.startTime}
-              onChange={(e) => setFormData(prev => ({ ...prev, startTime: e.target.value }))}
-              required
-            />
-          </div>
-          
-          <div className="form-group">
-            <label htmlFor="edit-duration">Duration (minutes)</label>
-            <input
-              id="edit-duration"
-              type="number"
-              value={formData.duration}
-              onChange={(e) => setFormData(prev => ({ ...prev, duration: e.target.value }))}
-              min="1"
-              max="480"
-              required
-            />
-          </div>
-        </div>
-
-        <div className="form-group">
-          <label htmlFor="edit-breast-type">Feeding Type</label>
-          <select
-            id="edit-breast-type"
-            value={formData.breastType}
-            onChange={(e) => setFormData(prev => ({ ...prev, breastType: e.target.value as any }))}
-          >
-            <option value="left">Left Breast</option>
-            <option value="right">Right Breast</option>
-            <option value="both">Both Breasts</option>
-            <option value="bottle">Bottle</option>
-          </select>
-        </div>
-
-        {formData.breastType === 'bottle' && (
-          <div className="form-group">
-            <label htmlFor="edit-bottle-volume">Bottle Volume (ml)</label>
-            <input
-              id="edit-bottle-volume"
-              type="number"
-              value={formData.bottleVolume}
-              onChange={(e) => setFormData(prev => ({ ...prev, bottleVolume: e.target.value }))}
-              min="1"
-              max="500"
-              required
-            />
-          </div>
-        )}
-
-        <div className="form-group">
-          <label htmlFor="edit-notes">Notes</label>
-          <textarea
-            id="edit-notes"
-            value={formData.notes}
-            onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-            rows={4}
-            placeholder="Session notes..."
-          />
-        </div>
-
-        <div className="form-actions">
-          <button type="button" className="btn-secondary" onClick={onCancel}>
-            Cancel
-          </button>
-          <button type="submit" className="btn-primary">
-            Save Changes
-          </button>
-        </div>
-      </div>
-    </form>
   );
 };
 
