@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { isDebugMode } from '../lib/debug';
 import './Navigation.css';
 
 const Navigation: React.FC = () => {
@@ -64,13 +65,15 @@ const Navigation: React.FC = () => {
               🚪
             </button>
           </div>
-          <NavLink
-            to="/debug"
-            className={({ isActive }) => `debug-link ${isActive ? 'active' : ''}`}
-            title="Debug Tools"
-          >
-            🔧
-          </NavLink>
+          {isDebugMode() && (
+            <NavLink
+              to="/debug"
+              className={({ isActive }) => `debug-link ${isActive ? 'active' : ''}`}
+              title="Debug Tools"
+            >
+              🔧
+            </NavLink>
+          )}
         </div>
       </div>
     </nav>

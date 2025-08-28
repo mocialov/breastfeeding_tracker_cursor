@@ -99,6 +99,13 @@ The application is designed with mobile-first principles:
    ```bash
    REACT_APP_SUPABASE_URL=your_supabase_project_url
    REACT_APP_SUPABASE_ANON_KEY=your_supabase_anon_key
+   REACT_APP_DEBUG=false
+   ```
+
+4. **Debug Mode (Optional)**:
+   - To enable debug tools, set `REACT_APP_DEBUG=true` in your `.env.local` file
+   - Debug tools include database connection testing, authentication status, and troubleshooting utilities
+   - **Note**: Debug tools are hidden by default for security and should only be enabled during development
    ```
 
 ### Application Setup
@@ -190,6 +197,13 @@ interface UserProfile {
 - Weekly summary view with daily statistics
 - Date navigation with calendar picker
 - Export functionality (CSV and PDF)
+
+### Debug Tools (Development Only)
+- Database connection testing and diagnostics
+- Authentication status verification
+- Environment variable validation
+- Row Level Security policy testing
+- **Note**: Only visible when `REACT_APP_DEBUG=true` is set
 
 ### Navigation
 - Sticky navigation bar with active state indicators

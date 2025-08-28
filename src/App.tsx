@@ -9,6 +9,7 @@ import Debug from './components/Debug';
 import Auth from './components/Auth';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { FeedingProvider } from './context/FeedingContext';
+import { isDebugMode } from './lib/debug';
 
 // Get the basename for GitHub Pages deployment
 const basename = process.env.NODE_ENV === 'production'
@@ -46,7 +47,27 @@ function AppContent() {
             <Route path="/" element={<LiveTracker />} />
             <Route path="/manual-entry" element={<ManualEntry />} />
             <Route path="/history" element={<FeedingHistory />} />
-            <Route path="/debug" element={<Debug />} />
+            {isDebugMode() ? (
+              <Route path="/debug" element={<Debug />} />
+            ) : (
+              <Route path="/debug" element={
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  height: '50vh',
+                  fontSize: '18px',
+                  color: '#666',
+                  textAlign: 'center'
+                }}>
+                  <div>
+                    <h2>🔒 Debug Access Restricted</h2>
+                    <p>Debug tools are not available in this environment.</p>
+                    <p>To enable debug tools, set <code>REACT_APP_DEBUG=true</code> in your <code>.env.local</code> file.</p>
+                  </div>
+                </div>
+              } />
+            )}
           </Routes>
         </main>
       </div>
