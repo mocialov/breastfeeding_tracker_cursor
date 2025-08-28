@@ -1,5 +1,10 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+
+// Get the basename for GitHub Pages deployment
+const basename = process.env.NODE_ENV === 'production'
+  ? '/breastfeeding_tracker_cursor'
+  : '';
 import './App.css';
 import LiveTracker from './components/LiveTracker';
 import ManualEntry from './components/ManualEntry';
@@ -38,7 +43,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 // Main App Component
 const AppContent: React.FC = () => {
   return (
-    <Router>
+    <Router basename={basename}>
       <div className="App">
         <Routes>
           <Route path="/" element={

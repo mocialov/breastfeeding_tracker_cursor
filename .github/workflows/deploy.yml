@@ -62,6 +62,11 @@ jobs:
         REACT_APP_SUPABASE_URL: ${{ secrets.REACT_APP_SUPABASE_URL }}
         REACT_APP_SUPABASE_ANON_KEY: ${{ secrets.REACT_APP_SUPABASE_ANON_KEY }}
 
+    - name: Copy 404.html for GitHub Pages routing
+      run: |
+        echo "Copying 404.html for SPA routing..."
+        cp public/404.html build/404.html
+
     - name: Verify Environment Variables in Build
       run: |
         echo "Checking if environment variables are embedded in built files..."
