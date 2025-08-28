@@ -51,7 +51,6 @@ const Debug: React.FC = () => {
           }
         } else {
           addLog('✅ Basic connection successful');
-          addLog(`   📊 Query returned: ${JSON.stringify(connectionTest)}`);
         }
       } catch (timeoutError) {
         addLog(`❌ Connection test timed out: ${timeoutError}`);
