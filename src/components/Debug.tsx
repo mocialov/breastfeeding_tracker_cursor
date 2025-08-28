@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 
 const Debug: React.FC = () => {
-  const { state, testSupabaseConnection } = useFeeding();
+  const { state } = useFeeding();
   const { user } = useAuth();
   const [debugResults, setDebugResults] = useState<string[]>([]);
   const [isRunningTests, setIsRunningTests] = useState(false);
@@ -34,7 +34,7 @@ const Debug: React.FC = () => {
         .limit(1);
 
       try {
-        const { data: connectionTest, error: connectionError } = await Promise.race([
+        const { error: connectionError } = await Promise.race([
           connectionTestPromise,
           timeoutPromise
         ]) as any;
@@ -66,7 +66,7 @@ const Debug: React.FC = () => {
       addLog('🔗 Test 1.5: Testing basic client connection...');
       try {
         // Test if we can at least create a client connection
-        const clientTest = supabase.auth.getUser();
+        await supabase.auth.getUser();
         addLog('✅ Supabase client initialized successfully');
       } catch (clientError) {
         addLog(`❌ Supabase client initialization failed: ${clientError}`);
@@ -131,7 +131,7 @@ const Debug: React.FC = () => {
       if (user) {
         addLog('🔒 Test 5: Testing Row Level Security...');
         try {
-          const { data, error } = await supabase
+          const { error } = await supabase
             .from('feeding_sessions')
             .select('*')
             .eq('user_id', user.id)

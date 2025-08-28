@@ -224,7 +224,7 @@ export function FeedingProvider({ children }: { children: ReactNode }) {
       );
 
       try {
-        const { data: testData, error: testError } = await Promise.race([connectionTest, timeoutPromise]) as any;
+        const { error: testError } = await Promise.race([connectionTest, timeoutPromise]) as any;
 
         if (testError) {
           console.error('❌ Supabase connection test failed:', testError);
